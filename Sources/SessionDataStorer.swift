@@ -205,7 +205,7 @@ public extension PerfectHTTP.HTTPCookie {
     }
 }
 
-extension String {
+public extension String {
     
     var encodingCookieCompatibility: String? {
         return self.addingPercentEncoding(withAllowedCharacters: .alphanumerics)

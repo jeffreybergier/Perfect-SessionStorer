@@ -48,3 +48,21 @@ open class SessionStorerInMemoryDataSource<E>: SessionStorerDataSource<E> {
         return self.storage.filter({ $0.value.isExpired })
     }
 }
+
+public struct SessionInMemoryStringStorer {
+    private static let dataSource = SessionStorerInMemoryDataSource<String>()
+    public static let shared: SessionStorer<String> = {
+        let storer = SessionStorer<String>()
+        storer.dataSource = dataSource
+        return storer
+    }()
+}
+
+public struct SessionInMemoryAnyStorer {
+    private static let dataSource = SessionStorerInMemoryDataSource<Any>()
+    public static let shared: SessionStorer<Any> = {
+        let storer = SessionStorer<Any>()
+        storer.dataSource = dataSource
+        return storer
+    }()
+}

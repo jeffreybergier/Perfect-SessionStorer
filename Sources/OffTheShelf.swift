@@ -8,19 +8,43 @@
 
 import PerfectHTTP
 
-public final class SessionStorerNILDelegate<E>: SessionStorerDelegate {
+open class SessionStorerDelegate<E>: SessionStorerDelegateProtocol {
     public typealias K = E
-    public func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<K, SessionStorerNILDelegate>) -> K? { return .none }
-    public func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, SessionStorerNILDelegate>) -> Bool { return true }
-    public func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, SessionStorerNILDelegate>) -> K? { return .none }
-    public func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, SessionStorerNILDelegate>) { }
-    public func deleted(expired values: [String : K], withToken token: String, storer: SessionStorer<K, SessionStorerNILDelegate>) {}
+    public init() {}
+    open func willStore(value: E?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<E>) -> E? { return .none }
+    open func shouldReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) -> Bool { return true }
+    open func willReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) -> E? { return .none }
+    open func didReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) { }
+    open func deleted(expired values: [String : E], withToken token: String, storer: SessionStorer<E>) {}
 }
 
-public struct SessionStringStorer {
-    public static let shared = SessionStorer<String, SessionStorerNILDelegate<String>>()
+open class SessionStorerDataSource<E>: SessionStorerDataSourceProtocol {
+    public typealias K = E
+    public init() {}
+    public subscript(storer: SessionStorer<K>, key: String) -> Expire<[String : K]>? {
+        get {
+            fatalError("SessionStorerDataSource is an abstract superclass that does not save any data. You need to subclass and create your own data source.")
+        }
+        set {
+            fatalError("SessionStorerDataSource is an abstract superclass that does not save any data. You need to subclass and create your own data source.")
+        }
+    }
+    public func expiredItems(storer: SessionStorer<K>) -> [(key: String,  value: Expire<[String : E]>)] {
+        return []
+    }
 }
 
-public struct SessionAnyStorer {
-    public static let shared = SessionStorer<Any, SessionStorerNILDelegate<Any>>()
+open class SessionStorerInMemoryDataSource<E>: SessionStorerDataSource<E> {
+    private var storage = [String : Expire<[String : E]>]()
+    public override subscript(storer: SessionStorer<E>, key: String) -> Expire<[String : E]>? {
+        get {
+            return self.storage[key]
+        }
+        set {
+            self.storage[key] = newValue
+        }
+    }
+    public override func expiredItems(storer: SessionStorer<E>) -> [(key: String,  value: Expire<[String : E]>)] {
+        return self.storage.filter({ $0.value.isExpired })
+    }
 }

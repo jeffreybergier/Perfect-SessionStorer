@@ -11,19 +11,26 @@ import PerfectHTTP
 import PerfectThread
 import Foundation
 
-public protocol SessionStorerDelegate: class {
+public protocol SessionStorerDelegateProtocol: class {
     
     associatedtype K
     
-    func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<K, Self>) -> K?
-    func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, Self>) -> Bool
-    func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, Self>) -> K?
-    func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, Self>)
-    func deleted(expired values: [String : K], withToken token: String, storer: SessionStorer<K, Self>)
+    func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<K>) -> K?
+    func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K>) -> Bool
+    func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K>) -> K?
+    func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K>)
+    func deleted(expired values: [String : K], withToken token: String, storer: SessionStorer<K>)
+}
+
+public protocol SessionStorerDataSourceProtocol: class {
+    associatedtype K
+    subscript(storer: SessionStorer<K>, key: String) -> Expire<[String : K]>? { get set }
+    func expiredItems(storer: SessionStorer<K>) ->[(key: String,  value: Expire<[String : K]>)]
 }
 
 
-open class SessionStorer<T, D: SessionStorerDelegate> where D.K == T {
+
+open class SessionStorer<T> {
     
     // MARK: Constant properties
     
@@ -33,23 +40,25 @@ open class SessionStorer<T, D: SessionStorerDelegate> where D.K == T {
     
     // MARK: Private storage, do not touch
     
-    private var storage: [String : Expire<[String : T]>] = [:]
-    private var activeConnections = [(HTTPRequest, HTTPResponse)]()
+    //private var storage: [String : Expire<[String : T]>] = [:]
     
     // MARK:  Public interface
-    
-    public weak var delegate: D?
+    public weak var dataSource: SessionStorerDataSource<T>?
+    public weak var delegate: SessionStorerDelegate<T>?
 
     public init(sessionCookieName: String = "perfect-session", sessionExpiration: TimeInterval = 365*24*60*60) {
+        // configure constants
         self.sessionCookieName = sessionCookieName
         self.sessionExpiration = sessionExpiration
         
+        // configure Filter and prepare to add cookies to all incoming packets
         self.filter = SessionStorerFilter()
         self.filter.requestCallback = { [weak self] request, response in
             guard let guardedSelf = self, guardedSelf.existingToken(for: request) == .none else { return }
             guardedSelf.generateSessionTokenAndCookie(for: request, andFor: response)
         }
         
+        // start the timer for deleting old objects
         Threading.getQueue(name: "SessionStorage::ValueExpirationCheckingThread", type: .concurrent).dispatch {
             self.removeExpiredValues()
         }
@@ -95,7 +104,7 @@ open class SessionStorer<T, D: SessionStorerDelegate> where D.K == T {
         
         // set the information and reset the expiration of the information
         dictionary[key] = value
-        self.storage[token] = Expire(value: dictionary, expiresIn: self.sessionExpiration)
+        self.dataSource?[self, token] = Expire(value: dictionary, expiresIn: self.sessionExpiration)
     }
     
     public func value(forKey key: String, for request: HTTPRequest) -> T? {
@@ -126,11 +135,11 @@ open class SessionStorer<T, D: SessionStorerDelegate> where D.K == T {
     
     private func removeExpiredValues() {
         // Find expired containers
-        let expiredContainers = self.storage.filter({ $0.value.isExpired })
+        let expiredContainers = self.dataSource?.expiredItems(storer: self)
         
         // delete expired containers
-        expiredContainers.forEach() { (token, container) in
-            self.storage.removeValue(forKey: token)
+        expiredContainers?.forEach() { (token, container) in
+            self.dataSource?[self, token] = .none
             self.delegate?.deleted(expired: container.value, withToken: token, storer: self)
         }
         
@@ -142,7 +151,7 @@ open class SessionStorer<T, D: SessionStorerDelegate> where D.K == T {
     // MARK: private helper methods
     
     private func existingOrNewDictionaryContainer(for token: String) -> Expire<[String : T]> {
-        return self.storage[token] ?? Expire(value: [String : T](), expiresIn: self.sessionExpiration)
+        return self.dataSource?[self, token] ?? Expire(value: [String : T](), expiresIn: self.sessionExpiration)
     }
     
     private func existingToken(for request: HTTPRequest) -> String? {
@@ -160,7 +169,7 @@ public class SessionStorerFilter: HTTPRequestFilter {
     }
 }
 
-internal struct Expire<V> {
+public struct Expire<V> {
     
     var value: V
     var startDate: Date

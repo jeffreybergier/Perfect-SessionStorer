@@ -16,3 +16,11 @@ public final class SessionStorerNILDelegate<E>: SessionStorerDelegate {
     public func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, SessionStorerNILDelegate>) { }
     public func deleted(expired values: [String : K], withToken token: String, storer: SessionStorer<K, SessionStorerNILDelegate>) {}
 }
+
+public struct SessionStringStorer {
+    public static let shared = SessionStorer<String, SessionStorerNILDelegate<String>>()
+}
+
+public struct SessionAnyStorer {
+    public static let shared = SessionStorer<Any, SessionStorerNILDelegate<Any>>()
+}

@@ -8,31 +8,9 @@
 
 import PerfectHTTP
 
-open class SessionStorerDelegate<E>: SessionStorerDelegateProtocol {
-    public typealias K = E
-    public init() {}
-    open func willStore(value: E?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<E>) -> E? { return .none }
-    open func shouldReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) -> Bool { return true }
-    open func willReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) -> E? { return .none }
-    open func didReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) { }
-    open func deleted(expired values: [String : E], withToken token: String, storer: SessionStorer<E>) {}
-}
-
-open class SessionStorerDataSource<E>: SessionStorerDataSourceProtocol {
-    public typealias K = E
-    public init() {}
-    public subscript(storer: SessionStorer<K>, key: String) -> Expire<[String : K]>? {
-        get {
-            fatalError("SessionStorerDataSource is an abstract superclass that does not save any data. You need to subclass and create your own data source.")
-        }
-        set {
-            fatalError("SessionStorerDataSource is an abstract superclass that does not save any data. You need to subclass and create your own data source.")
-        }
-    }
-    public func expiredItems(storer: SessionStorer<K>) -> [(key: String,  value: Expire<[String : E]>)] {
-        return []
-    }
-}
+// MARK: In Memory Data Source
+// This data source is a good one to use if you only need to store things in memory
+// If there server stops, no information is persisted
 
 open class SessionStorerInMemoryDataSource<E>: SessionStorerDataSource<E> {
     private var storage = [String : Expire<[String : E]>]()
@@ -48,6 +26,11 @@ open class SessionStorerInMemoryDataSource<E>: SessionStorerDataSource<E> {
         return self.storage.filter({ $0.value.isExpired })
     }
 }
+
+// MARK: Singletons for Common Use Cases
+// These are easy to use singletons for storing data without having to subclass anything
+// The data source is an In Memory data source
+// You can create your own and switch it out on the singleton instance.
 
 public struct SessionInMemoryStringStorer {
     private static let dataSource = SessionStorerInMemoryDataSource<String>()

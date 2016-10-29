@@ -11,10 +11,10 @@ import PerfectHTTP
 import PerfectThread
 import Foundation
 
+// MARK: Protocols
+
 public protocol SessionStorerDelegateProtocol: class {
-    
     associatedtype K
-    
     func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<K>) -> K?
     func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K>) -> Bool
     func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K>) -> K?
@@ -28,7 +28,29 @@ public protocol SessionStorerDataSourceProtocol: class {
     func expiredItems(storer: SessionStorer<K>) ->[(key: String,  value: Expire<[String : K]>)]
 }
 
+// MARK: Abstract SuperClasses - Hopefully we will get Generic Protocols and we can get rid of these
 
+open class SessionStorerDelegate<E>: SessionStorerDelegateProtocol {
+    public typealias K = E
+    public init() {}
+    open func willStore(value: E?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<E>) -> E? { return .none }
+    open func shouldReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) -> Bool { return true }
+    open func willReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) -> E? { return .none }
+    open func didReturn(value: E?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<E>) { }
+    open func deleted(expired values: [String : E], withToken token: String, storer: SessionStorer<E>) {}
+}
+
+open class SessionStorerDataSource<E>: SessionStorerDataSourceProtocol {
+    public typealias K = E
+    public init() {}
+    open subscript(storer: SessionStorer<K>, key: String) -> Expire<[String : K]>? {
+        get { fatalError("SessionStorerDataSource is an abstract superclass that does not save any data. You need to subclass and create your own data source.") }
+        set { fatalError("SessionStorerDataSource is an abstract superclass that does not save any data. You need to subclass and create your own data source.") }
+    }
+    open func expiredItems(storer: SessionStorer<K>) -> [(key: String,  value: Expire<[String : E]>)] { return [] }
+}
+
+// MARK: Main Session Storer Class
 
 open class SessionStorer<T> {
     
@@ -168,6 +190,8 @@ public class SessionStorerFilter: HTTPRequestFilter {
         callback(.`continue`(request, response))
     }
 }
+
+// MARK: Helper Types
 
 public struct Expire<V> {
     

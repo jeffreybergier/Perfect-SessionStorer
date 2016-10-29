@@ -28,7 +28,7 @@ public protocol SessionStorerDataSourceProtocol: class {
     func expiredItems(storer: SessionStorer<K>) ->[(key: String,  value: Expire<[String : K]>)]
 }
 
-// MARK: Abstract SuperClasses - Hopefully we will get Generic Protocols and we can get rid of these
+// MARK: Abstract Super Classes - Hopefully we will get Generic Protocols and we can get rid of these
 
 open class SessionStorerDelegate<E>: SessionStorerDelegateProtocol {
     public typealias K = E
@@ -59,10 +59,6 @@ open class SessionStorer<T> {
     public let sessionCookieName: String
     public let sessionExpiration: TimeInterval
     public private(set) var filter: SessionStorerFilter!
-    
-    // MARK: Private storage, do not touch
-    
-    //private var storage: [String : Expire<[String : T]>] = [:]
     
     // MARK:  Public interface
     public weak var dataSource: SessionStorerDataSource<T>?
@@ -181,17 +177,16 @@ open class SessionStorer<T> {
     }
 }
 
+// MARK: Helper Types
+
 public class SessionStorerFilter: HTTPRequestFilter {
-    
     fileprivate var requestCallback: ((HTTPRequest, HTTPResponse) -> Void)!
-    
     public func filter(request: HTTPRequest, response: HTTPResponse, callback: (HTTPRequestFilterResult) -> ()) {
         self.requestCallback(request, response)
         callback(.`continue`(request, response))
     }
 }
 
-// MARK: Helper Types
 
 public struct Expire<V> {
     

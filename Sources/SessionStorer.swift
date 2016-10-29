@@ -11,37 +11,19 @@ import PerfectHTTP
 import PerfectThread
 import Foundation
 
-public class SessionStorerFilter: HTTPRequestFilter {
-    
-    fileprivate var requestCallback: ((HTTPRequest, HTTPResponse) -> Void)!
-    
-    public func filter(request: HTTPRequest, response: HTTPResponse, callback: (HTTPRequestFilterResult) -> ()) {
-        self.requestCallback(request, response)
-        callback(.`continue`(request, response))
-    }
-}
-
-public protocol SessionDataStorerDelegate: class {
+public protocol SessionStorerDelegate: class {
     
     associatedtype K
     
-    func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionDataStorer<K, Self>) -> K?
-    func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, Self>) -> Bool
-    func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, Self>) -> K?
-    func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, Self>)
-    func deleted(expired values: [String : K], withToken token: String, storer: SessionDataStorer<K, Self>)
+    func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionStorer<K, Self>) -> K?
+    func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, Self>) -> Bool
+    func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, Self>) -> K?
+    func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionStorer<K, Self>)
+    func deleted(expired values: [String : K], withToken token: String, storer: SessionStorer<K, Self>)
 }
 
-public final class SessionDataStorerNILDelegate<E>: SessionDataStorerDelegate {
-    public typealias K = E
-    public func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) -> K? { return .none }
-    public func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) -> Bool { return true }
-    public func willReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) -> K? { return .none }
-    public func didReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) { }
-    public func deleted(expired values: [String : K], withToken token: String, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) {}
-}
 
-open class SessionDataStorer<T, D: SessionDataStorerDelegate> where D.K == T {
+open class SessionStorer<T, D: SessionStorerDelegate> where D.K == T {
     
     // MARK: Constant properties
     
@@ -168,6 +150,16 @@ open class SessionDataStorer<T, D: SessionDataStorerDelegate> where D.K == T {
     }
 }
 
+public class SessionStorerFilter: HTTPRequestFilter {
+    
+    fileprivate var requestCallback: ((HTTPRequest, HTTPResponse) -> Void)!
+    
+    public func filter(request: HTTPRequest, response: HTTPResponse, callback: (HTTPRequestFilterResult) -> ()) {
+        self.requestCallback(request, response)
+        callback(.`continue`(request, response))
+    }
+}
+
 internal struct Expire<V> {
     
     var value: V
@@ -185,34 +177,4 @@ internal struct Expire<V> {
         self.count = expiresIn
         self.value = value
     }
-}
-
-public extension PerfectHTTP.HTTPCookie {
-    static func cookies(with values: [String : String], expiresIn: TimeInterval) -> [PerfectHTTP.HTTPCookie] {
-        let cookies = values.map() { (key, value) -> PerfectHTTP.HTTPCookie in
-            let cookie = PerfectHTTP.HTTPCookie(
-                name: key,
-                value: value,
-                domain: nil,
-                expires: .relativeSeconds(Int(expiresIn)),
-                path: "/",
-                secure: false,
-                httpOnly: true
-            )
-            return cookie
-        }
-        return cookies
-    }
-}
-
-public extension String {
-    
-    var encodingCookieCompatibility: String? {
-        return self.addingPercentEncoding(withAllowedCharacters: .alphanumerics)
-    }
-    
-    var decodingCookieCompatibility: String? {
-        return self.removingPercentEncoding
-    }
-    
 }

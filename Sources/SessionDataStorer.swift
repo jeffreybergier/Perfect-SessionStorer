@@ -32,7 +32,7 @@ public protocol SessionDataStorerDelegate: class {
     func deleted(expired values: [String : K], withToken token: String, storer: SessionDataStorer<K, Self>)
 }
 
-final class SessionDataStorerNILDelegate<E>: SessionDataStorerDelegate {
+public final class SessionDataStorerNILDelegate<E>: SessionDataStorerDelegate {
     public typealias K = E
     func willStore(value: K?, forKey key: String, withToken token: String, on response: HTTPResponse?, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) -> K? { return .none }
     func shouldReturn(value: K?, forKey key: String, withToken token: String, for request: HTTPRequest, storer: SessionDataStorer<K, SessionDataStorerNILDelegate>) -> Bool { return true }

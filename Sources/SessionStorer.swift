@@ -64,10 +64,14 @@ open class SessionStorer<T> {
     public weak var dataSource: SessionStorerDataSource<T>?
     public weak var delegate: SessionStorerDelegate<T>?
 
-    public init(sessionCookieName: String = "perfect-session", sessionExpiration: TimeInterval = 365*24*60*60) {
+    public init(sessionCookieName: String = "perfect-session", sessionExpiration: TimeInterval = 365*24*60*60, delegate: SessionStorerDelegate<T>? = .none, dataSource: SessionStorerDataSource<T>? = .none) {
         // configure constants
         self.sessionCookieName = sessionCookieName
         self.sessionExpiration = sessionExpiration
+        
+        // configure the delegate and data source
+        self.delegate = delegate
+        self.dataSource = dataSource
         
         // configure Filter and prepare to add cookies to all incoming packets
         self.filter = SessionStorerFilter()

@@ -36,18 +36,10 @@ open class SessionStorerInMemoryDataSource<E>: SessionStorerDataSource<E> {
 
 public struct SessionInMemoryStringStorer {
     private static let dataSource = SessionStorerInMemoryDataSource<String>()
-    public static let shared: SessionStorer<String> = {
-        let storer = SessionStorer<String>()
-        storer.dataSource = dataSource
-        return storer
-    }()
+    public static let shared = SessionStorer<String>(dataSource: dataSource)
 }
 
 public struct SessionInMemoryAnyStorer {
     private static let dataSource = SessionStorerInMemoryDataSource<Any>()
-    public static let shared: SessionStorer<Any> = {
-        let storer = SessionStorer<Any>()
-        storer.dataSource = dataSource
-        return storer
-    }()
+    public static let shared = SessionStorer<Any>(dataSource: dataSource)
 }

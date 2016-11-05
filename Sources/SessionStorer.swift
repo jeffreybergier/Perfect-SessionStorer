@@ -76,7 +76,7 @@ open class SessionStorer<T> {
         // configure Filter and prepare to add cookies to all incoming packets
         self.filter = SessionStorerFilter()
         self.filter.requestCallback = { [weak self] request, response in
-            guard let guardedSelf = self, guardedSelf.existingToken(for: request) == .none else { return }
+            guard let guardedSelf = self, guardedSelf.checkToken(for: request) == .none else { return }
             guardedSelf.generateSessionTokenAndCookie(for: request, andFor: response)
         }
         
@@ -115,7 +115,7 @@ open class SessionStorer<T> {
     
     public func set(value: T?, forKey key: String, for request: HTTPRequest, response: HTTPResponse? = nil) {
         // get the token
-        let token = self.existingToken(for: request)!
+        let token = self.token(for: request)
         
         // check with the delegate to see if it wants to change what is being saved
         let value = self.delegate?.willStore(value: value, forKey: key, withToken: token, on: response, storer: self) ?? value
@@ -131,7 +131,7 @@ open class SessionStorer<T> {
     
     public func value(forKey key: String, for request: HTTPRequest) -> T? {
         // get the token
-        let token = self.existingToken(for: request)!
+        let token = self.token(for: request)
         
         // get the existing value
         let container = self.existingOrNewDictionaryContainer(for: token)
@@ -176,8 +176,14 @@ open class SessionStorer<T> {
         return self.dataSource?[self, token] ?? Expire(value: [String : T](), expiresIn: self.sessionExpiration)
     }
     
-    private func existingToken(for request: HTTPRequest) -> String? {
+    private func checkToken(for request: HTTPRequest) -> String? {
         return request.cookies.filter({ $0.0 == self.sessionCookieName }).last?.1.decodingCookieCompatibility
+    }
+    
+    public func token(for request: HTTPRequest) -> String {
+        guard let token = self.checkToken(for: request)
+            else { fatalError("No token present in request. You probably need to install the request filter for this storer.") }
+        return token
     }
 }
 
